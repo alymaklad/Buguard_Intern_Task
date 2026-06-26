@@ -183,41 +183,73 @@ The import payload supports two convenience fields:
 
 ## Example Prompts and Outputs
 
-### 1. Natural-language query
+> All outputs below are **real responses** captured live from the running app against the sample dataset.
 
-**Request:**
-```json
-POST /ai/query
-{"question": "Show me all expired certificates on production subdomains"}
+---
+
+### 1. Natural-language query — `POST /ai/query`
+
+**Prompt:** *"Show me all production subdomains"*
+
+```bash
+curl -X POST http://localhost:8000/ai/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Show me all production subdomains"}'
 ```
 
-**Response:**
 ```json
 {
   "out_of_scope": false,
-  "filter_used": {"asset_type": "certificate", "tag": "prod"},
+  "filter_used": {
+    "asset_type": "subdomain",
+    "tag": "prod",
+    "out_of_scope": false
+  },
   "results": [
     {
-      "id": "...",
-      "type": "certificate",
-      "value": "CN=api.example.com",
-      "metadata": {"expires": "2025-01-02", "issuer": "Let's Encrypt"},
-      ...
+      "id": "27e4d372-2e4b-49f9-8c51-7ad9edfb218a",
+      "type": "subdomain",
+      "value": "api.example.com",
+      "status": "active",
+      "tags": ["api", "critical", "prod"],
+      "metadata": { "service_type": "REST API" }
+    },
+    {
+      "id": "2adb56d6-153f-4f28-9ec5-a8c85edb363e",
+      "type": "subdomain",
+      "value": "www.example.com",
+      "status": "active",
+      "tags": ["prod", "web"],
+      "metadata": { "service_type": "web" }
+    },
+    {
+      "id": "1ef1ec92-1167-412d-a3af-e6b3ed8831fa",
+      "type": "subdomain",
+      "value": "admin.example.com",
+      "status": "active",
+      "tags": ["prod", "admin"],
+      "metadata": { "service_type": "admin panel" }
+    },
+    {
+      "id": "a1cd3d7b-d313-4fe1-a70d-4abd9f309a5e",
+      "type": "subdomain",
+      "value": "payments.example.com",
+      "status": "active",
+      "tags": ["prod", "payments", "critical"],
+      "metadata": { "service_type": "payment gateway", "pci_scope": true }
     }
   ],
-  "total": 3
+  "total": 7
 }
 ```
 
-**Out-of-scope example:**
-```json
-POST /ai/query
-{"question": "What is the weather in Cairo today?"}
-```
+**Guardrail — out-of-scope query:** *"What is the weather today?"*
+
 ```json
 {
   "out_of_scope": true,
-  "message": "This question is about weather conditions, which is outside the scope of asset data.",
+  "message": "The question is about the weather, which is not related to asset data.",
+  "filter_used": null,
   "results": [],
   "total": 0
 }
@@ -225,72 +257,78 @@ POST /ai/query
 
 ---
 
-### 2. Risk scoring
+### 2. Risk scoring — `POST /ai/risk`
 
-**Request:**
-```json
-POST /ai/risk
-{"asset_ids": []}
+**Prompt:** Analyze all assets (empty `asset_ids` = full dataset)
+
+```bash
+curl -X POST http://localhost:8000/ai/risk \
+  -H "Content-Type: application/json" \
+  -d '{"asset_ids": []}'
 ```
-*(empty = analyze all assets)*
 
-**Response:**
 ```json
 {
   "risk_assessment": {
-    "risk_score": 72,
-    "severity": "high",
+    "risk_score": 95,
+    "severity": "critical",
     "reasons": [
-      "CN=*.example.com wildcard certificate expired on 2024-06-01",
-      "MySQL 5.7.32 is end-of-life since 2023-10-31",
-      "Port 3306 (MySQL) exposed on 203.0.113.11 — sensitive database port",
-      "Port 22 (SSH) exposed on 203.0.113.11",
-      "PHP 7.2.0 is end-of-life since 2020-11-30"
+      "Expired certificate: CN=api.example.com",
+      "Expired certificate: CN=*.example.com",
+      "Expired certificate: CN=admin.example.com",
+      "Sensitive exposed service: 22/tcp (port=22, banner=openssh_8.2p1)",
+      "Sensitive exposed service: 3306/tcp (port=3306, banner=mysql 5.7.32)",
+      "Sensitive exposed service: 21/tcp (port=21, banner=vsftpd 3.0.3)",
+      "Sensitive exposed service: 5432/tcp (port=5432, banner=postgresql 14.2)",
+      "Stale asset: dev.example.com",
+      "Stale asset: 192.168.1.50",
+      "Stale asset: PHP/7.2.0",
+      "End-of-life technology: MySQL/5.7.32",
+      "End-of-life technology: PHP/7.2.0"
     ],
-    "summary": "The asset inventory contains two expired certificates, two end-of-life technologies, and multiple sensitive ports exposed on internet-facing IP addresses.",
+    "summary": "The organization has multiple expired certificates, sensitive exposed services, stale assets, and end-of-life technologies, posing a significant risk to its security posture.",
     "recommendations": [
-      "Renew the wildcard certificate CN=*.example.com immediately",
-      "Upgrade MySQL 5.7 to 8.0+ (EOL since Oct 2023)",
-      "Restrict port 3306 to internal network access only",
-      "Upgrade PHP 7.2 to 8.2+ (EOL since Nov 2020)"
+      "Renew expired certificates",
+      "Remove or update sensitive exposed services",
+      "Investigate and update stale assets",
+      "Update end-of-life technologies"
     ]
   },
-  "assets_analyzed": 35,
-  "asset_ids": ["...", "..."]
+  "assets_analyzed": 36
 }
 ```
 
 ---
 
-### 3. Automated enrichment
+### 3. Automated enrichment — `POST /ai/enrich/{asset_id}`
 
-**Request:**
-```json
-POST /ai/enrich/{asset_id_for_payments.example.com}
+**Prompt:** Enrich `payments.example.com`
+
+```bash
+curl -X POST http://localhost:8000/ai/enrich/a1cd3d7b-d313-4fe1-a70d-4abd9f309a5e
 ```
 
-**Response:**
 ```json
 {
-  "asset_id": "...",
+  "asset_id": "a1cd3d7b-d313-4fe1-a70d-4abd9f309a5e",
   "asset_value": "payments.example.com",
   "enrichment": {
     "environment": "prod",
-    "category": "payment gateway",
+    "category": "web",
     "criticality": "critical",
-    "confidence": 0.97,
-    "reasoning": "The subdomain 'payments' strongly indicates a production payment processing endpoint. The metadata confirms pci_scope=true and the 'critical' tag is already present."
+    "confidence": 0.9,
+    "reasoning": "The subdomain 'payments.example.com' is classified as 'critical' due to its association with payment processing and PCI scope, as indicated by the 'pci_scope' metadata and 'payments' tag. The 'prod' tag and the presence of a payment gateway service suggest a production environment."
   },
-  "tags_after": ["prod", "payments", "critical"],
+  "tags_after": ["payments", "critical", "prod"],
   "metadata_after": {
     "service_type": "payment gateway",
     "pci_scope": true,
     "ai_enrichment": {
       "environment": "prod",
-      "category": "payment gateway",
+      "category": "web",
       "criticality": "critical",
-      "confidence": 0.97,
-      "reasoning": "..."
+      "confidence": 0.9,
+      "reasoning": "The subdomain 'payments.example.com' is classified as 'critical' due to its association with payment processing and PCI scope..."
     }
   }
 }
@@ -298,48 +336,64 @@ POST /ai/enrich/{asset_id_for_payments.example.com}
 
 ---
 
-### 4. Report generation
+### 4. Report generation — `POST /ai/report`
 
-**Request:**
-```json
-POST /ai/report
-{
-  "filter": {"asset_type": "certificate"}
-}
+**Prompt:** Generate a security report filtered to services only
+
+```bash
+curl -X POST http://localhost:8000/ai/report \
+  -H "Content-Type: application/json" \
+  -d '{"filter": {"asset_type": "service"}}'
 ```
 
-**Response:**
 ```json
 {
   "report": {
-    "title": "Certificate Health Assessment Report",
-    "executive_summary": "Analysis of 5 TLS certificates reveals 2 expired and 1 expiring-soon certificate, posing immediate risk to service availability and user trust.",
+    "title": "Security Report for Services",
+    "executive_summary": "This report provides an overview of the security posture of 7 services in the dataset. The services are primarily active and associated with production, staging, and internal environments. However, some services have been identified as stale or potentially vulnerable.",
     "sections": [
       {
-        "title": "Expired Certificates",
-        "content": "Two certificates have expired: CN=api.example.com (expired 2025-01-02, issued by Let's Encrypt) and CN=*.example.com (expired 2024-06-01). These assets should be renewed immediately.",
-        "referenced_asset_ids": ["<real-uuid-1>", "<real-uuid-2>"]
+        "title": "Exposed Services",
+        "content": "Services 4e43bb0d (443/tcp) and 6d64e02e (80/tcp) are exposed on the same IP address (203.0.113.10). Service 0ac2e897 (22/tcp) is also exposed on IP address 203.0.113.11.",
+        "referenced_asset_ids": [
+          "4e43bb0d-7d20-46a7-8c43-8e77fea8ffc5",
+          "6d64e02e-a846-4b86-948e-b13ab3fc3611",
+          "0ac2e897-53b7-41a4-ab49-02a709ca21ff"
+        ]
       },
-      ...
+      {
+        "title": "Stale Services",
+        "content": "Service 46c33625 (21/tcp) is stale and may pose a security risk.",
+        "referenced_asset_ids": ["46c33625-b603-4931-aa3d-313beefc79f1"]
+      },
+      {
+        "title": "Internal Services",
+        "content": "Service df7b3846 (5432/tcp) is an internal database service with IP address 10.0.0.5.",
+        "referenced_asset_ids": ["df7b3846-35f0-4861-89de-aecac90a4d7a"]
+      }
     ],
+    "total_assets_analyzed": 7,
     "key_findings": [
-      "2 of 5 certificates are expired",
-      "Wildcard certificate CN=*.example.com is a high-impact expiry affecting all subdomains",
-      "Payments subdomain certificate (DigiCert EV) remains valid until 2027-03-01"
+      "Service 21/tcp is stale and may pose a security risk",
+      "443/tcp and 80/tcp are co-exposed on IP 203.0.113.10",
+      "5432/tcp (PostgreSQL) is an internal database service on 10.0.0.5"
     ],
-    "overall_risk_level": "high"
+    "overall_risk_level": "medium"
   },
   "grounding_validation": {
     "grounded": true,
     "hallucinated_ids": [],
     "flagged_sections": [],
-    "total_assets_queried": 5,
-    "asset_values_confirmed_in_text": ["CN=api.example.com", "CN=*.example.com"]
+    "total_assets_queried": 7,
+    "asset_values_confirmed_in_text": ["443/tcp", "80/tcp", "22/tcp", "21/tcp", "5432/tcp"]
   }
 }
 ```
 
----
+> **Grounding note:** `hallucinated_ids: []` confirms the model referenced only the 7 assets it was given — zero hallucinations.
+
+
+
 
 ## Project Structure
 
