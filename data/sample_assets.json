@@ -1,0 +1,385 @@
+[
+  {
+    "id": "a1",
+    "type": "domain",
+    "value": "example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["root", "prod"],
+    "metadata": {}
+  },
+  {
+    "id": "a2",
+    "type": "domain",
+    "value": "internal-corp.net",
+    "status": "active",
+    "source": "scan",
+    "tags": ["root", "internal"],
+    "metadata": {}
+  },
+  {
+    "id": "a3",
+    "type": "subdomain",
+    "value": "api.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "api"],
+    "metadata": {"service_type": "REST API"},
+    "parent": "a1"
+  },
+  {
+    "id": "a4",
+    "type": "subdomain",
+    "value": "www.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "web"],
+    "metadata": {"service_type": "web"},
+    "parent": "a1"
+  },
+  {
+    "id": "a5",
+    "type": "subdomain",
+    "value": "staging.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["staging"],
+    "metadata": {"service_type": "web"},
+    "parent": "a1"
+  },
+  {
+    "id": "a6",
+    "type": "subdomain",
+    "value": "dev.example.com",
+    "status": "stale",
+    "source": "scan",
+    "tags": ["dev"],
+    "metadata": {},
+    "parent": "a1"
+  },
+  {
+    "id": "a7",
+    "type": "subdomain",
+    "value": "admin.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "admin"],
+    "metadata": {"service_type": "admin panel"},
+    "parent": "a1"
+  },
+  {
+    "id": "a8",
+    "type": "subdomain",
+    "value": "mail.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "mail"],
+    "metadata": {"service_type": "mail"},
+    "parent": "a1"
+  },
+  {
+    "id": "a9",
+    "type": "subdomain",
+    "value": "vpn.internal-corp.net",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "vpn"],
+    "metadata": {},
+    "parent": "a2"
+  },
+  {
+    "id": "a10",
+    "type": "subdomain",
+    "value": "db.internal-corp.net",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "database"],
+    "metadata": {"service_type": "database"},
+    "parent": "a2"
+  },
+  {
+    "id": "a11",
+    "type": "ip_address",
+    "value": "203.0.113.10",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod"],
+    "metadata": {"asn": "AS12345", "country": "US", "isp": "ExampleISP"}
+  },
+  {
+    "id": "a12",
+    "type": "ip_address",
+    "value": "203.0.113.11",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod"],
+    "metadata": {"asn": "AS12345", "country": "US", "isp": "ExampleISP"}
+  },
+  {
+    "id": "a13",
+    "type": "ip_address",
+    "value": "192.168.1.50",
+    "status": "stale",
+    "source": "scan",
+    "tags": ["internal"],
+    "metadata": {"asn": "private", "country": "private"}
+  },
+  {
+    "id": "a14",
+    "type": "ip_address",
+    "value": "10.0.0.5",
+    "status": "active",
+    "source": "manual",
+    "tags": ["internal", "prod"],
+    "metadata": {"asn": "private", "country": "private", "note": "internal load balancer"}
+  },
+  {
+    "id": "a15",
+    "type": "service",
+    "value": "443/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "https"],
+    "metadata": {"port": 443, "protocol": "tcp", "banner": "nginx/1.18.0", "ip": "203.0.113.10"}
+  },
+  {
+    "id": "a16",
+    "type": "service",
+    "value": "80/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "http"],
+    "metadata": {"port": 80, "protocol": "tcp", "banner": "nginx/1.18.0", "ip": "203.0.113.10"}
+  },
+  {
+    "id": "a17",
+    "type": "service",
+    "value": "22/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "ssh"],
+    "metadata": {"port": 22, "protocol": "tcp", "banner": "OpenSSH_8.2p1", "ip": "203.0.113.11"}
+  },
+  {
+    "id": "a18",
+    "type": "service",
+    "value": "3306/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "database"],
+    "metadata": {"port": 3306, "protocol": "tcp", "banner": "MySQL 5.7.32", "ip": "203.0.113.11"}
+  },
+  {
+    "id": "a19",
+    "type": "service",
+    "value": "21/tcp",
+    "status": "stale",
+    "source": "scan",
+    "tags": ["ftp"],
+    "metadata": {"port": 21, "protocol": "tcp", "banner": "vsftpd 3.0.3", "ip": "203.0.113.10"}
+  },
+  {
+    "id": "a20",
+    "type": "service",
+    "value": "8080/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["staging", "http"],
+    "metadata": {"port": 8080, "protocol": "tcp", "banner": "Apache Tomcat/9.0.45", "ip": "203.0.113.11"}
+  },
+  {
+    "id": "a21",
+    "type": "certificate",
+    "value": "CN=api.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod"],
+    "metadata": {
+      "issuer": "Let's Encrypt",
+      "subject": "api.example.com",
+      "expires": "2025-01-02",
+      "issued": "2024-10-04",
+      "serial": "abc123",
+      "san": ["api.example.com"]
+    },
+    "covers": "a3"
+  },
+  {
+    "id": "a22",
+    "type": "certificate",
+    "value": "CN=www.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod"],
+    "metadata": {
+      "issuer": "DigiCert",
+      "subject": "www.example.com",
+      "expires": "2026-08-15",
+      "issued": "2025-08-15",
+      "serial": "def456",
+      "san": ["www.example.com", "example.com"]
+    },
+    "covers": "a4"
+  },
+  {
+    "id": "a23",
+    "type": "certificate",
+    "value": "CN=*.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "wildcard"],
+    "metadata": {
+      "issuer": "Let's Encrypt",
+      "subject": "*.example.com",
+      "expires": "2024-06-01",
+      "issued": "2024-03-01",
+      "serial": "ghi789",
+      "san": ["*.example.com", "example.com"]
+    },
+    "covers": "a1"
+  },
+  {
+    "id": "a24",
+    "type": "certificate",
+    "value": "CN=mail.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "mail"],
+    "metadata": {
+      "issuer": "Sectigo",
+      "subject": "mail.example.com",
+      "expires": "2026-12-31",
+      "issued": "2025-12-31",
+      "serial": "jkl012",
+      "san": ["mail.example.com"]
+    },
+    "covers": "a8"
+  },
+  {
+    "id": "a25",
+    "type": "certificate",
+    "value": "CN=admin.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "admin"],
+    "metadata": {
+      "issuer": "Let's Encrypt",
+      "subject": "admin.example.com",
+      "expires": "2024-12-15",
+      "issued": "2024-09-15",
+      "serial": "mno345",
+      "san": ["admin.example.com"]
+    },
+    "covers": "a7"
+  },
+  {
+    "id": "a26",
+    "type": "technology",
+    "value": "nginx/1.18.0",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "web-server"],
+    "metadata": {"vendor": "nginx", "version": "1.18.0", "eol": false, "cpe": "cpe:2.3:a:nginx:nginx:1.18.0"}
+  },
+  {
+    "id": "a27",
+    "type": "technology",
+    "value": "MySQL/5.7.32",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "database", "eol"],
+    "metadata": {"vendor": "MySQL", "version": "5.7.32", "eol": true, "eol_date": "2023-10-31", "cpe": "cpe:2.3:a:mysql:mysql:5.7.32"}
+  },
+  {
+    "id": "a28",
+    "type": "technology",
+    "value": "Apache Tomcat/9.0.45",
+    "status": "active",
+    "source": "scan",
+    "tags": ["staging", "app-server"],
+    "metadata": {"vendor": "Apache", "version": "9.0.45", "eol": false, "cpe": "cpe:2.3:a:apache:tomcat:9.0.45"}
+  },
+  {
+    "id": "a29",
+    "type": "technology",
+    "value": "OpenSSH/8.2p1",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod"],
+    "metadata": {"vendor": "OpenBSD", "version": "8.2p1", "eol": false, "cpe": "cpe:2.3:a:openbsd:openssh:8.2p1"}
+  },
+  {
+    "id": "a30",
+    "type": "technology",
+    "value": "PHP/7.2.0",
+    "status": "stale",
+    "source": "scan",
+    "tags": ["prod", "eol"],
+    "metadata": {"vendor": "PHP", "version": "7.2.0", "eol": true, "eol_date": "2020-11-30", "cpe": "cpe:2.3:a:php:php:7.2.0"}
+  },
+  {
+    "id": "a31",
+    "type": "subdomain",
+    "value": "payments.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "payments", "critical"],
+    "metadata": {"service_type": "payment gateway", "pci_scope": true},
+    "parent": "a1"
+  },
+  {
+    "id": "a32",
+    "type": "subdomain",
+    "value": "test.internal-corp.net",
+    "status": "stale",
+    "source": "scan",
+    "tags": ["dev", "test"],
+    "metadata": {},
+    "parent": "a2"
+  },
+  {
+    "id": "a33",
+    "type": "service",
+    "value": "5432/tcp",
+    "status": "active",
+    "source": "scan",
+    "tags": ["internal", "database"],
+    "metadata": {"port": 5432, "protocol": "tcp", "banner": "PostgreSQL 14.2", "ip": "10.0.0.5"}
+  },
+  {
+    "id": "a34",
+    "type": "certificate",
+    "value": "CN=payments.example.com",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "payments"],
+    "metadata": {
+      "issuer": "DigiCert EV",
+      "subject": "payments.example.com",
+      "expires": "2027-03-01",
+      "issued": "2026-03-01",
+      "serial": "pqr678",
+      "san": ["payments.example.com"],
+      "ev": true
+    },
+    "covers": "a31"
+  },
+  {
+    "id": "a35",
+    "type": "ip_address",
+    "value": "198.51.100.42",
+    "status": "active",
+    "source": "scan",
+    "tags": ["prod", "cdn"],
+    "metadata": {"asn": "AS54321", "country": "US", "isp": "CloudflareISP", "note": "CDN edge node"}
+  },
+  {
+    "id": "bad1",
+    "type": "domain",
+    "value": "",
+    "status": "active",
+    "source": "scan",
+    "tags": [],
+    "metadata": {}
+  }
+]

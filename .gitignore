@@ -1,0 +1,38 @@
+# Asset Management System — .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment secrets — NEVER commit this
+.env
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.log
+
+# SQLite test databases
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
