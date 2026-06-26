@@ -12,6 +12,10 @@ from contextlib import asynccontextmanager
 from app.db import create_db_and_tables
 from app.routers.assets import router as assets_router
 from app.routers.ai import router as ai_router
+from app.routers.graph import router as graph_router
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.limiter import limiter
 
 
 @asynccontextmanager
@@ -36,6 +40,10 @@ app = FastAPI(
 
 app.include_router(assets_router)
 app.include_router(ai_router)
+app.include_router(graph_router)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.get("/", tags=["Health"])

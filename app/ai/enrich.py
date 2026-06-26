@@ -56,7 +56,7 @@ enrich_prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-def enrich_asset(asset_id: str, session: Session) -> Dict[str, Any]:
+def enrich_asset(asset_id: str, tenant_id: str, session: Session) -> Dict[str, Any]:
     """
     Classify and enrich a single asset.
 
@@ -65,7 +65,7 @@ def enrich_asset(asset_id: str, session: Session) -> Dict[str, Any]:
     3. Write enrichment back to asset.metadata_.
     4. Return enrichment result + updated asset snapshot.
     """
-    asset = session.get(Asset, asset_id)
+    asset = session.exec(select(Asset).where(Asset.id == asset_id, Asset.tenant_id == tenant_id)).first()
     if not asset:
         raise ValueError(f"Asset with id '{asset_id}' not found.")
 

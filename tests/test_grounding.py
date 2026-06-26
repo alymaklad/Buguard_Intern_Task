@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 # ---------------------------------------------------------------------------
 
 def make_asset(id: str, value: str, asset_type=AssetType.domain) -> Asset:
-    return Asset(
+    return Asset(tenant_id="org_A", 
         id=id,
         type=asset_type,
         value=value,

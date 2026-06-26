@@ -54,7 +54,7 @@ def test_basic_import(session):
         {"id": "a1", "type": "domain", "value": "example.com", "source": "scan", "tags": ["root"], "metadata": {}},
         {"id": "a2", "type": "subdomain", "value": "api.example.com", "source": "scan", "tags": ["prod"], "metadata": {}},
     ]
-    result = bulk_import(records, session)
+    result = bulk_import(records, "org_A", session)
     assert result["imported"] == 2
     assert result["updated"] == 0
     assert result["failed"] == []
@@ -68,8 +68,8 @@ def test_idempotent_import(session):
     records = [
         {"id": "a1", "type": "domain", "value": "example.com", "source": "scan", "tags": ["root"], "metadata": {}},
     ]
-    r1 = bulk_import(records, session)
-    r2 = bulk_import(records, session)
+    r1 = bulk_import(records, "org_A", session)
+    r2 = bulk_import(records, "org_A", session)
 
     assert r1["imported"] == 1
     assert r2["imported"] == 0
@@ -93,8 +93,8 @@ def test_dedup_merges_tags(session):
     records_v2 = [
         {"type": "domain", "value": "corp.io", "source": "scan", "tags": ["critical"], "metadata": {}},
     ]
-    bulk_import(records_v1, session)
-    bulk_import(records_v2, session)
+    bulk_import(records_v1, "org_A", session)
+    bulk_import(records_v2, "org_A", session)
 
     asset = session.exec(select(Asset).where(Asset.value == "corp.io")).first()
     assert "root" in asset.tags
@@ -112,7 +112,7 @@ def test_stale_asset_reactivated(session):
     records_stale = [
         {"type": "domain", "value": "old.example.com", "status": "stale", "source": "scan", "tags": [], "metadata": {}},
     ]
-    bulk_import(records_stale, session)
+    bulk_import(records_stale, "org_A", session)
 
     asset = session.exec(select(Asset).where(Asset.value == "old.example.com")).first()
     assert asset.status == AssetStatus.stale
@@ -121,7 +121,7 @@ def test_stale_asset_reactivated(session):
     records_active = [
         {"type": "domain", "value": "old.example.com", "status": "active", "source": "scan", "tags": [], "metadata": {}},
     ]
-    bulk_import(records_active, session)
+    bulk_import(records_active, "org_A", session)
 
     session.refresh(asset)
     assert asset.status == AssetStatus.active
@@ -137,7 +137,7 @@ def test_malformed_record_does_not_crash_batch(session):
         {"id": "bad1", "type": "invalid_type_xyz", "value": "bad.com", "source": "scan"},  # bad type
         {"id": "good2", "type": "ip_address", "value": "1.2.3.4", "source": "scan", "tags": [], "metadata": {}},
     ]
-    result = bulk_import(records, session)
+    result = bulk_import(records, "org_A", session)
 
     assert result["imported"] == 2   # two good records
     assert len(result["failed"]) == 1  # one bad record logged
@@ -159,8 +159,8 @@ def test_metadata_newer_wins_on_reimport(session):
         {"type": "certificate", "value": "CN=test.com", "source": "scan", "tags": [],
          "metadata": {"expires": "2027-01-01"}},  # updated expiry
     ]
-    bulk_import(records_v1, session)
-    bulk_import(records_v2, session)
+    bulk_import(records_v1, "org_A", session)
+    bulk_import(records_v2, "org_A", session)
 
     asset = session.exec(select(Asset).where(Asset.value == "CN=test.com")).first()
     assert asset.metadata_["expires"] == "2027-01-01"  # newer wins

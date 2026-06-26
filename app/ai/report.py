@@ -79,6 +79,7 @@ report_prompt = ChatPromptTemplate.from_messages([
 
 def generate_report(
     filter_params: Optional[QueryFilter],
+    tenant_id: str,
     session: Session,
     limit: int = 100,
 ) -> Dict[str, Any]:
@@ -94,9 +95,9 @@ def generate_report(
 
     # Step 1: Fetch real data
     if filter_params:
-        assets = run_asset_query(filter_params, session)
+        assets = run_asset_query(filter_params, tenant_id, session)
     else:
-        assets = list(session.exec(select(Asset).limit(limit)).all())
+        assets = list(session.exec(select(Asset).where(Asset.tenant_id == tenant_id).limit(limit)).all())
 
     if not assets:
         return {

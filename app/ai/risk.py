@@ -101,7 +101,7 @@ def _precompute_risk_hints(assets: List[Asset]) -> List[str]:
     return hints
 
 
-def score_risk(asset_ids: List[str], session: Session) -> Dict[str, Any]:
+def score_risk(asset_ids: List[str], tenant_id: str, session: Session) -> Dict[str, Any]:
     """
     Fetch real assets from DB, then ask LLM to produce a structured RiskScore.
 
@@ -112,10 +112,11 @@ def score_risk(asset_ids: List[str], session: Session) -> Dict[str, Any]:
     Returns:
         Dict with risk assessment + the assets analyzed.
     """
+    stmt = select(Asset).where(Asset.tenant_id == tenant_id)
     if asset_ids:
-        stmt = select(Asset).where(Asset.id.in_(asset_ids))
+        stmt = stmt.where(Asset.id.in_(asset_ids))
     else:
-        stmt = select(Asset).limit(50)  # safety cap for all-assets analysis
+        stmt = stmt.limit(50)  # safety cap for all-assets analysis
 
     assets = session.exec(stmt).all()
 

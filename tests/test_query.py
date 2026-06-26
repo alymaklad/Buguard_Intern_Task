@@ -38,7 +38,7 @@ def session_fixture():
             {"type": "ip_address", "value": "192.168.1.1", "status": "stale", "source": "scan",
              "tags": ["internal"], "metadata": {}},
         ]
-        bulk_import(records, session)
+        bulk_import(records, "org_A", session)
         yield session
 
 
@@ -48,28 +48,28 @@ def session_fixture():
 
 def test_filter_by_type(session):
     f = QueryFilter(asset_type=AssetType.certificate)
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 1
     assert results[0].type == AssetType.certificate
 
 
 def test_filter_by_status_stale(session):
     f = QueryFilter(status=AssetStatus.stale)
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 1
     assert results[0].value == "192.168.1.1"
 
 
 def test_filter_by_tag(session):
     f = QueryFilter(tag="api")
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 1
     assert results[0].value == "api.example.com"
 
 
 def test_filter_by_value_contains(session):
     f = QueryFilter(value_contains="example.com")
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     # Should match domain, subdomain, certificate
     values = [r.value for r in results]
     assert "example.com" in values
@@ -78,20 +78,20 @@ def test_filter_by_value_contains(session):
 
 def test_combined_filter(session):
     f = QueryFilter(asset_type=AssetType.subdomain, tag="prod")
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 1
     assert results[0].value == "api.example.com"
 
 
 def test_empty_filter_returns_all(session):
     f = QueryFilter()
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 5
 
 
 def test_filter_metadata_key(session):
     f = QueryFilter(metadata_key="port")
-    results = run_asset_query(f, session)
+    results = run_asset_query(f, "org_A", session)
     assert len(results) == 1
     assert results[0].value == "22/tcp"
 
@@ -150,13 +150,21 @@ def test_out_of_scope_query(session):
     """Out-of-scope queries should return out_of_scope=True, no results."""
     from app.ai.query import answer_nl_query
 
-    with patch("app.ai.query.translate_nl_to_filter") as mock_translate:
+    with patch("app.ai.query.create_agent") as mock_create_agent, \
+         patch("app.ai.query.translate_nl_to_filter") as mock_translate:
+         
+        mock_agent = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "I cannot answer weather questions."
+        mock_agent.invoke.return_value = {"messages": [mock_message]}
+        mock_create_agent.return_value = mock_agent
+
         mock_translate.return_value = QueryFilter(
             out_of_scope=True,
             out_of_scope_reason="This question is about weather, not asset data."
         )
 
-        result = answer_nl_query("What's the weather like today?", session)
+        result = answer_nl_query("What's the weather like today?", "org_A", session)
         assert result["out_of_scope"] is True
         assert result["total"] == 0
         assert "weather" in result["message"].lower() or result["message"] != ""

@@ -15,6 +15,8 @@ import json
 from typing import List, Dict, Any
 
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langchain.agents import create_agent
 from sqlmodel import Session, select
 
 from app.models import Asset, AssetType, AssetStatus
@@ -69,12 +71,12 @@ def translate_nl_to_filter(question: str) -> QueryFilter:
         raise RuntimeError(f"LLM query translation failed: {e}") from e
 
 
-def run_asset_query(filter_obj: QueryFilter, session: Session) -> List[Asset]:
+def run_asset_query(filter_obj: QueryFilter, tenant_id: str, session: Session) -> List[Asset]:
     """
     Execute a real SQL query based on the structured filter.
     The LLM never sees or produces asset data at this stage.
     """
-    stmt = select(Asset)
+    stmt = select(Asset).where(Asset.tenant_id == tenant_id)
 
     if filter_obj.asset_type:
         stmt = stmt.where(Asset.type == filter_obj.asset_type)
@@ -102,44 +104,85 @@ def run_asset_query(filter_obj: QueryFilter, session: Session) -> List[Asset]:
     return list(assets)
 
 
-def answer_nl_query(question: str, session: Session) -> Dict[str, Any]:
+def answer_nl_query(question: str, tenant_id: str, session: Session) -> Dict[str, Any]:
     """
-    Full NL query pipeline:
-      1. Translate question to filter.
-      2. Run real DB query.
-      3. Return results with the filter used (for transparency).
-
-    Returns a dict safe to serialize as a JSON response.
+    Agentic NL query pipeline:
+      1. Define a tool that wraps run_asset_query.
+      2. Instantiate a tool-calling agent.
+      3. The agent decides to call the tool with the correct QueryFilter parameters.
     """
-    filter_obj = translate_nl_to_filter(question)
-
-    if filter_obj.out_of_scope:
-        return {
-            "out_of_scope": True,
-            "message": filter_obj.out_of_scope_reason or "This question is outside the scope of asset data.",
-            "filter_used": None,
-            "results": [],
-            "total": 0,
-        }
-
-    assets = run_asset_query(filter_obj, session)
-
-    return {
-        "out_of_scope": False,
-        "filter_used": filter_obj.model_dump(exclude_none=True),
-        "results": [
+    
+    @tool
+    def search_assets_in_db(
+        asset_type: str = None, 
+        status: str = None, 
+        tag: str = None, 
+        value_contains: str = None,
+        metadata_key: str = None,
+        metadata_value: str = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search the asset database. Use this tool whenever the user asks about assets.
+        Provide the parameters as needed to filter the results.
+        """
+        filter_obj = QueryFilter(
+            asset_type=asset_type,
+            status=status,
+            tag=tag,
+            value_contains=value_contains,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value
+        )
+        assets = run_asset_query(filter_obj, tenant_id, session)
+        return [
             AssetRead(
-                id=a.id,
-                type=a.type,
-                value=a.value,
-                status=a.status,
-                first_seen=a.first_seen,
-                last_seen=a.last_seen,
-                source=a.source,
-                tags=a.tags or [],
-                metadata=a.metadata_ or {},
-            ).model_dump()
-            for a in assets
-        ],
-        "total": len(assets),
-    }
+                id=a.id, type=a.type, value=a.value, status=a.status,
+                first_seen=a.first_seen, last_seen=a.last_seen, source=a.source,
+                tags=a.tags or [], metadata=a.metadata_ or {}
+            ).model_dump() for a in assets
+        ]
+
+    llm = get_llm()
+    tools = [search_assets_in_db]
+    
+    agent = create_agent(
+        model=llm,
+        tools=tools,
+        system_prompt=NL_QUERY_SYSTEM
+    )
+    
+    try:
+        inputs = {"messages": [{"role": "user", "content": question}]}
+        response_state = agent.invoke(inputs)
+        
+        # The agent returns a state dict where "messages" contains the full history
+        messages = response_state.get("messages", [])
+        agent_text = messages[-1].content if messages else ""
+        
+        # We will parse out if it was out of scope
+        filter_obj = translate_nl_to_filter(question)
+        if filter_obj.out_of_scope:
+            return {
+                "out_of_scope": True,
+                "message": filter_obj.out_of_scope_reason or "Outside scope.",
+                "filter_used": None,
+                "results": [],
+                "total": 0,
+            }
+            
+        assets = run_asset_query(filter_obj, tenant_id, session)
+        return {
+            "out_of_scope": False,
+            "filter_used": filter_obj.model_dump(exclude_none=True),
+            "results": [
+                AssetRead(
+                    id=a.id, type=a.type, value=a.value, status=a.status,
+                    first_seen=a.first_seen, last_seen=a.last_seen, source=a.source,
+                    tags=a.tags or [], metadata=a.metadata_ or {}
+                ).model_dump() for a in assets
+            ],
+            "total": len(assets),
+            "agent_response": agent_text
+        }
+    except Exception as e:
+        raise RuntimeError(f"Agent execution failed: {e}") from e

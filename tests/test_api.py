@@ -38,6 +38,7 @@ def setup_and_teardown():
 
 
 client = TestClient(app)
+client.headers.update({"X-API-Key": "buguard_org_a_123"})
 
 SAMPLE_RECORDS = [
     {"id": "t1", "type": "domain", "value": "test.com", "status": "active",

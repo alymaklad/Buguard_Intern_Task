@@ -9,9 +9,12 @@ Endpoints:
 """
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session
+
+from app.auth import get_current_tenant
+from app.limiter import limiter
 
 from app.db import get_session
 from app.schemas import QueryFilter
@@ -44,7 +47,13 @@ class ReportRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/query")
-def nl_query(request: NLQueryRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def nl_query(
+    request: Request,
+    payload: NLQueryRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """
     Natural-language asset query.
 
@@ -54,7 +63,7 @@ def nl_query(request: NLQueryRequest, session: Session = Depends(get_session)):
     Example: {"question": "Show me all expired certificates on production subdomains"}
     """
     try:
-        return answer_nl_query(request.question, session)
+        return answer_nl_query(payload.question, tenant_id, session)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
@@ -62,7 +71,13 @@ def nl_query(request: NLQueryRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/risk")
-def risk_score(request: RiskRequest, session: Session = Depends(get_session)):
+@limiter.limit("5/minute")
+def risk_score(
+    request: Request,
+    payload: RiskRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """
     Risk scoring & summarization.
 
@@ -72,7 +87,7 @@ def risk_score(request: RiskRequest, session: Session = Depends(get_session)):
     Pass empty asset_ids to analyze all assets (up to 50).
     """
     try:
-        return score_risk(request.asset_ids, session)
+        return score_risk(payload.asset_ids, tenant_id, session)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
@@ -80,7 +95,13 @@ def risk_score(request: RiskRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/enrich/{asset_id}")
-def enrich(asset_id: str, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def enrich(
+    request: Request,
+    asset_id: str,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """
     Automated enrichment & categorization.
 
@@ -88,7 +109,7 @@ def enrich(asset_id: str, session: Session = Depends(get_session)):
     Writes the enrichment result back to the asset's metadata and tags.
     """
     try:
-        return enrich_asset(asset_id, session)
+        return enrich_asset(asset_id, tenant_id, session)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
@@ -98,7 +119,13 @@ def enrich(asset_id: str, session: Session = Depends(get_session)):
 
 
 @router.post("/report")
-def report(request: ReportRequest, session: Session = Depends(get_session)):
+@limiter.limit("3/minute")
+def report(
+    request: Request,
+    payload: ReportRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """
     Natural-language report generation with grounding validation.
 
@@ -107,7 +134,7 @@ def report(request: ReportRequest, session: Session = Depends(get_session)):
     hallucinated references are detected and stripped.
     """
     try:
-        return generate_report(request.filter, session)
+        return generate_report(payload.filter, tenant_id, session)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:

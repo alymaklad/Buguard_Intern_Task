@@ -54,7 +54,7 @@ class RelationshipType(str, Enum):
 class Asset(SQLModel, table=True):
     __tablename__ = "assets"
     __table_args__ = (
-        UniqueConstraint("type", "value", name="uq_asset_type_value"),
+        UniqueConstraint("tenant_id", "type", "value", name="uq_tenant_type_value"),
     )
 
     id: Optional[str] = Field(
@@ -62,6 +62,7 @@ class Asset(SQLModel, table=True):
         primary_key=True,
         index=True,
     )
+    tenant_id: str = Field(index=True)
     type: AssetType = Field(index=True)
     value: str = Field(index=True)
     status: AssetStatus = Field(default=AssetStatus.active, index=True)
@@ -86,6 +87,7 @@ class AssetRelationship(SQLModel, table=True):
         default_factory=lambda: str(uuid.uuid4()),
         primary_key=True,
     )
+    tenant_id: str = Field(index=True)
     from_asset_id: str = Field(index=True, foreign_key="assets.id")
     to_asset_id: str = Field(index=True, foreign_key="assets.id")
     relationship_type: RelationshipType = Field(default=RelationshipType.related_to)

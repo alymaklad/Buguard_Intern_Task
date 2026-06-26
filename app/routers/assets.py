@@ -17,6 +17,7 @@ from app.db import get_session
 from app.models import Asset, AssetRelationship, AssetType, AssetStatus
 from app.ingest import bulk_import
 from app.schemas import AssetRead, AssetList, ImportResponse, RelationshipRead
+from app.auth import get_current_tenant
 
 router = APIRouter(tags=["Assets"])
 
@@ -24,6 +25,7 @@ router = APIRouter(tags=["Assets"])
 @router.post("/import", response_model=ImportResponse)
 def import_assets(
     records: List[Dict[str, Any]],
+    tenant_id: str = Depends(get_current_tenant),
     session: Session = Depends(get_session),
 ):
     """
@@ -34,7 +36,7 @@ def import_assets(
     - Per-record validation: one bad record never crashes the batch.
     - Returns count of imported, updated, and failed records.
     """
-    result = bulk_import(records, session)
+    result = bulk_import(records, tenant_id, session)
     return ImportResponse(**result)
 
 
@@ -46,13 +48,14 @@ def list_assets(
     value_contains: Optional[str] = Query(None, description="Substring search in asset value"),
     limit: int = Query(20, ge=1, le=200, description="Page size"),
     offset: int = Query(0, ge=0, description="Page offset"),
+    tenant_id: str = Depends(get_current_tenant),
     session: Session = Depends(get_session),
 ):
     """
     List assets with optional filtering and pagination.
     """
-    stmt = select(Asset)
-    count_stmt = select(Asset)
+    stmt = select(Asset).where(Asset.tenant_id == tenant_id)
+    count_stmt = select(Asset).where(Asset.tenant_id == tenant_id)
 
     if type:
         stmt = stmt.where(Asset.type == type)
@@ -92,10 +95,14 @@ def list_assets(
 
 
 @router.get("/assets/{asset_id}", response_model=AssetRead)
-def get_asset(asset_id: str, session: Session = Depends(get_session)):
+def get_asset(
+    asset_id: str,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """Retrieve a single asset by its UUID."""
     asset = session.get(Asset, asset_id)
-    if not asset:
+    if not asset or asset.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found.")
     return AssetRead(
         id=asset.id,
@@ -111,10 +118,14 @@ def get_asset(asset_id: str, session: Session = Depends(get_session)):
 
 
 @router.get("/assets/{asset_id}/relationships", response_model=List[RelationshipRead])
-def get_asset_relationships(asset_id: str, session: Session = Depends(get_session)):
+def get_asset_relationships(
+    asset_id: str,
+    tenant_id: str = Depends(get_current_tenant),
+    session: Session = Depends(get_session)
+):
     """Get all relationships involving this asset (as source or target)."""
     asset = session.get(Asset, asset_id)
-    if not asset:
+    if not asset or asset.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found.")
 
     rels = session.exec(

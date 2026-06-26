@@ -31,6 +31,7 @@ def _merge_metadata(existing: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[
 
 def bulk_import(
     raw_records: List[Dict[str, Any]],
+    tenant_id: str,
     session: Session,
 ) -> Dict[str, Any]:
     """
@@ -56,8 +57,9 @@ def bulk_import(
         now = datetime.now(timezone.utc)
 
         try:
-            # Check for existing asset by (type, value)
+            # Check for existing asset by (tenant_id, type, value)
             stmt = select(Asset).where(
+                Asset.tenant_id == tenant_id,
                 Asset.type == record.type,
                 Asset.value == record.value,
             )
@@ -79,6 +81,7 @@ def bulk_import(
             else:
                 # --- INSERT path ---
                 asset = Asset(
+                    tenant_id=tenant_id,
                     type=record.type,
                     value=record.value,
                     status=record.status,
@@ -125,6 +128,7 @@ def bulk_import(
                 # Avoid duplicate relationships
                 existing_rel = session.exec(
                     select(AssetRelationship).where(
+                        AssetRelationship.tenant_id == tenant_id,
                         AssetRelationship.from_asset_id == from_id,
                         AssetRelationship.to_asset_id == to_id,
                         AssetRelationship.relationship_type == rel_type,
@@ -132,6 +136,7 @@ def bulk_import(
                 ).first()
                 if not existing_rel:
                     rel = AssetRelationship(
+                        tenant_id=tenant_id,
                         from_asset_id=from_id,
                         to_asset_id=to_id,
                         relationship_type=rel_type,
