@@ -76,6 +76,9 @@ def _precompute_risk_hints(assets: List[Asset]) -> List[str]:
             if expires_str:
                 try:
                     exp = datetime.fromisoformat(expires_str.replace("Z", "+00:00"))
+                    # Normalize to UTC-aware if the parsed datetime is naive
+                    if exp.tzinfo is None:
+                        exp = exp.replace(tzinfo=timezone.utc)
                     if exp < today:
                         hints.append(f"EXPIRED CERT: {asset.value} expired on {expires_str}")
                     elif exp < soon:
