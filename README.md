@@ -14,6 +14,14 @@ A self-contained module of the DarkAtlas Attack Surface Monitoring platform — 
 - **OpenAPI docs** at `/docs` (FastAPI built-in).
 - One-command startup: `docker compose up`.
 
+### 🏆 All 6 Bonus / Stretch Goals Implemented!
+1. **Multi-Tenant Scoping**: Database schema uses `tenant_id` boundaries. Organization A can never see Organization B's assets.
+2. **Authentication & API Keys**: `X-API-Key` header mapping secures all endpoints.
+3. **Caching & Rate Limiting**: `slowapi` rate limits protect heavy AI and database operations.
+4. **Agentic Tool-Use**: The AI Natural Language Query layer uses a true autonomous LangChain Agent with tool calling (`search_assets_in_db`) rather than a hardcoded sequential chain.
+5. **Graph Visualization**: A dynamic `/graph/visualize` endpoint returns a Mermaid.js HTML rendering of your asset relationships.
+6. **CI Pipeline**: A GitHub Actions workflow (`.github/workflows/test.yml`) boots Postgres and runs all 36 tests on every push.
+
 ---
 
 ## Quick Start (Docker — recommended)
@@ -45,6 +53,7 @@ The app creates its tables automatically on first boot.
 ```bash
 curl -X POST http://localhost:8000/import \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: buguard_org_a_123" \
   -d @data/sample_assets.json
 ```
 
@@ -127,6 +136,14 @@ uvicorn app.main:app --reload
 | `POST` | `/ai/enrich/{asset_id}` | Automated enrichment & categorization |
 | `POST` | `/ai/report` | Natural-language report generation |
 
+### Visualization
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/graph/visualize` | Renders a Mermaid.js HTML graph of all assets |
+
+> **Note**: All endpoints require an `X-API-Key` header (e.g., `buguard_org_a_123`) to identify the tenant.
+
 ---
 
 ## Running Tests
@@ -194,6 +211,7 @@ The import payload supports two convenience fields:
 ```bash
 curl -X POST http://localhost:8000/ai/query \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: buguard_org_a_123" \
   -d '{"question": "Show me all production subdomains"}'
 ```
 
@@ -264,6 +282,7 @@ curl -X POST http://localhost:8000/ai/query \
 ```bash
 curl -X POST http://localhost:8000/ai/risk \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: buguard_org_a_123" \
   -d '{"asset_ids": []}'
 ```
 
@@ -305,7 +324,8 @@ curl -X POST http://localhost:8000/ai/risk \
 **Prompt:** Enrich `payments.example.com`
 
 ```bash
-curl -X POST http://localhost:8000/ai/enrich/a1cd3d7b-d313-4fe1-a70d-4abd9f309a5e
+curl -X POST http://localhost:8000/ai/enrich/a1cd3d7b-d313-4fe1-a70d-4abd9f309a5e \
+  -H "X-API-Key: buguard_org_a_123"
 ```
 
 ```json
@@ -343,6 +363,7 @@ curl -X POST http://localhost:8000/ai/enrich/a1cd3d7b-d313-4fe1-a70d-4abd9f309a5
 ```bash
 curl -X POST http://localhost:8000/ai/report \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: buguard_org_a_123" \
   -d '{"filter": {"asset_type": "service"}}'
 ```
 
@@ -415,7 +436,10 @@ curl -X POST http://localhost:8000/ai/report \
 │   ├── ingest.py               # Bulk import + dedup logic
 │   ├── routers/
 │   │   ├── assets.py           # /import and /assets endpoints
-│   │   └── ai.py               # /ai/* endpoints
+│   │   ├── ai.py               # /ai/* endpoints
+│   │   └── graph.py            # /graph/visualize endpoint
+│   ├── auth.py                 # Multi-tenant API key validation
+│   ├── limiter.py              # slowapi rate limiter configuration
 │   └── ai/
 │       ├── llm.py              # Groq LLM initialization
 │       ├── grounding.py        # Hallucination validation utilities
